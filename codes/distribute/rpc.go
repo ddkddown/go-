@@ -26,15 +26,32 @@ type ExampleReply struct {
 
 // Add your RPC definitions here.
 type RegistReq struct {
-	workerName string
+	WorkerName string
 }
 
-type AskTaskReq struct {
-	workerName string
+type AskSrcTaskReq struct {
+	WorkerName string
 }
 
-type AskTaskRsp struct {
-	fileName string
+type AskSrcTaskRsp struct {
+	FileName string
+}
+
+type AskMiddleTaskReq struct {
+	WorkerName string
+}
+
+type AskMiddleTaskRsp struct {
+	FileName string
+}
+
+type FinishSrcReq struct {
+	SrcName    string
+	MiddleName string
+}
+
+type FinishMiddleReq struct {
+	FileName string
 }
 
 // Cook up a unique-ish UNIX-domain socket name
