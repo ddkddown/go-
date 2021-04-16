@@ -2,6 +2,7 @@ package mr
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -21,59 +22,97 @@ type WorkerInfo map[string]int
 
 type Master struct {
 	// Your definitions here.
-	srcs    SrcFiles    //源文件
-	middles MiddleFiles //中间文件
-	workers WorkerInfo  //workers名称
-	mu      sync.Mutex  //mutex
+	srcs      SrcFiles    //源文件
+	middles   MiddleFiles //中间文件
+	workers   WorkerInfo  //workers名称
+	workerMu  sync.Mutex  //mutex
+	middlesMu sync.Mutex
+	srcsMu    sync.Mutex
 }
 
 //Regist worker regist
-func (p *Master) Regist(request RegistReq) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (p *Master) Regist(request RegistReq, i *int) error {
+	p.workerMu.Lock()
+	defer p.workerMu.Unlock()
 
-	if _, exist := p.workers[request.workerName]; exist {
+	if _, exist := p.workers[request.WorkerName]; exist {
 		return errors.New("worker already registed!")
 	}
 
-	p.workers[request.workerName] = 1
+	p.workers[request.WorkerName] = 1
+	fmt.Println("regist worker: ", request.WorkerName)
 	return nil
 }
 
-//AskTask worker fetch task
-func (p *Master) AskTask(request AskTaskReq, response *AskTaskRsp) (int, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+//AskSrcTask worker fetch task
+func (p *Master) AskSrcTask(request AskSrcTaskReq, response *AskSrcTaskRsp) error {
+	p.srcsMu.Lock()
+	defer p.srcsMu.Unlock()
 
-	if _, exist := p.workers[request.workerName]; !exist {
-		return -1, errors.New("worker not registed!")
-	}
-
+	/*
+		if _, exist := p.workers[request.workerName]; !exist {
+			return -1, errors.New("worker not registed!")
+		}
+	*/
+	fmt.Println("0")
 	for k, v := range p.srcs {
 		if v.flag {
 			continue
 		}
 
-		response.fileName = k
+		response.FileName = k
 		v.flag = true
-		v.worker = request.workerName
+		v.worker = request.WorkerName
 		p.srcs[k] = v
-		return 0, nil
+		fmt.Println("1")
+		return nil
 	}
+
+	fmt.Println("2")
+	return errors.New("no more task")
+}
+
+//AskMiddleTask worker fetch task
+func (p *Master) AskMiddleTask(request AskMiddleTaskReq, response *AskMiddleTaskRsp) error {
+	p.middlesMu.Lock()
+	defer p.middlesMu.Unlock()
 
 	for k, v := range p.middles {
 		if v.flag {
 			continue
 		}
 
-		response.fileName = k
+		response.FileName = k
 		v.flag = true
-		v.worker = request.workerName
+		v.worker = request.WorkerName
 		p.middles[k] = v
-		return 0, nil
+		return nil
 	}
 
-	return 0, errors.New("no more srcs")
+	return errors.New("no more task")
+}
+
+func (p *Master) FinishSrc(request FinishSrcReq, i *int) error {
+	p.srcsMu.Lock()
+	delete(p.srcs, request.SrcName)
+	p.srcsMu.Unlock()
+
+	var tmp check
+	tmp.flag = false
+	tmp.worker = ""
+
+	p.middlesMu.Lock()
+	p.middles[request.MiddleName] = tmp
+	p.middlesMu.Unlock()
+	return nil
+}
+
+func (p *Master) FinishMiddle(request FinishMiddleReq, i *int) error {
+	p.middlesMu.Lock()
+	defer p.middlesMu.Unlock()
+
+	delete(p.middles, request.FileName)
+	return nil
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -109,21 +148,23 @@ func (m *Master) server() {
 // if the entire job has finished.
 //
 func (m *Master) Done() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	ret := false
-
 	// Your code here.
 	if 0 == len(m.srcs) && 0 == len(m.middles) {
 		ret = true
 		return ret
 	}
 
+	m.workerMu.Lock()
+	defer m.workerMu.Unlock()
+
 	for w, c := range m.workers {
+
 		c++
 		if c >= 10 {
 			// worker down
+
+			m.srcsMu.Lock()
 			for k, v := range m.srcs {
 				if v.worker == w {
 					v.flag = false
@@ -131,7 +172,9 @@ func (m *Master) Done() bool {
 					m.srcs[k] = v
 				}
 			}
+			m.srcsMu.Unlock()
 
+			m.middlesMu.Lock()
 			for k, v := range m.middles {
 				if v.worker == w {
 					v.flag = false
@@ -139,6 +182,8 @@ func (m *Master) Done() bool {
 					m.middles[k] = v
 				}
 			}
+			m.middlesMu.Unlock()
+
 		} else {
 			m.workers[w] = c
 		}
@@ -158,6 +203,13 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m.srcs = make(map[string]check)
 	m.middles = make(map[string]check)
 	m.workers = make(map[string]int)
+
+	for _, file := range files {
+		var tmp check
+		tmp.flag = false
+		tmp.worker = ""
+		m.srcs[file] = tmp
+	}
 
 	m.server()
 	return &m
