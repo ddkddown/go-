@@ -141,6 +141,20 @@ type RequestVoteReply struct {
 	voteGranted bool
 }
 
+type AppendEntriesArgs struct {
+	term         int32
+	leaderId     int32
+	prevLogIndex int32
+	prevLogTerm  int32
+	entries      []LogInfo
+	leaderCommit int32
+}
+
+type AppendEntriesReply struct {
+	term    int32
+	success bool
+}
+
 //
 // example RequestVote RPC handler.
 //
