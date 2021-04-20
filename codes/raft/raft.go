@@ -41,8 +41,10 @@ Follower 在收到AppendEntries后会返回消息。
 */
 
 import (
+	"math/rand"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"../labrpc"
 )
@@ -85,11 +87,13 @@ type Raft struct {
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
+	timer       *time.Timer
 	currentTerm int32
 	voteFor     int32
-	log         []LogInfo
+	leaderId    int32
 	commitIndex int32
 	lastApplied int32
+	log         []LogInfo
 	nextIndex   []int32
 	matchIndex  []int32
 }
@@ -239,7 +243,9 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 
 	// Your code here (2B).
-
+	isLeader = (rf.leaderId == int32(rf.me))
+	term = int(rf.currentTerm)
+	index = int(rf.commitIndex)
 	return index, term, isLeader
 }
 
@@ -283,7 +289,41 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here (2A, 2B, 2C).
+	rf.currentTerm = 0
+	rf.commitIndex = 0
+	rf.lastApplied = 0
+	rf.leaderId = -1
+	rf.log = make([]LogInfo, 10)
+	rf.matchIndex = make([]int32, 10)
+	rf.nextIndex = make([]int32, 10)
 
+	rand.Seed(time.Now().UnixNano())
+	go func() {
+		for {
+			rf.timer = time.NewTimer(time.Millisecond*rand.Intn(150) + 150)
+			select {
+			case <-rf.timer.C:
+				count := 1
+				arg := &RequestVoteArgs{}
+				arg.candidateId = int32(rf.me)
+				arg.lastLogTerm = rf.currentTerm
+				arg.term = rf.currentTerm + 1
+				arg.lastLogTerm = rf.commitIndex
+				reply := &RequestVoteReply{}
+				rf.currentTerm++
+
+				l := len(rf.peers)
+				for i := 0; i < l; i++ {
+					if i == me {
+						continue
+					}
+
+					rf.sendRequestVote(i, arg, reply)
+				}
+
+			}
+		}
+	}()
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
