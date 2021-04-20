@@ -16,6 +16,29 @@ package raft
 //   should send an ApplyMsg to the service (or tester)
 //   in the same server.
 //
+/*
+节点三个状态: Follower, Candidate, Leader. 其中Candidate是Follower向Leader转变的一个中间状态
+*/
+
+/*
+初始: 所有节点处于Follower状态，并各自开启一个随机的倒计时.
+当倒计时结束时向其余节点拉票，若获得了大于一半的票数则选举为Leader
+*/
+
+/*
+Leader election
+Fllower会有一个选举倒计时，选举倒计时是在150ms到300ms之间的随机的值,
+当倒计时结束的时候，会成为candidate, 自动开始拉票进行新一轮的选举(先投自己一票),
+然后发送Request Vote 消息给其他节点， 其余节点如果在此次选举还未投票则将票投给此candidate并重置倒计时
+若candidate获取了超过半数的投票，则成为leader。
+
+leader 会定时发送AppendEntries(心跳包)消息给Followers, 此时间间隔叫作heartbeat timeout
+Follower 在收到AppendEntries后会返回消息。
+
+此次选举将会持续到直到某一个Follwer停止接受心跳包, 并成为一个Candidate
+
+若有两个节点同时成为Candidate, 并且都只能获得半数投票，那么倒计时重启再次进行选举
+*/
 
 import (
 	"sync"
