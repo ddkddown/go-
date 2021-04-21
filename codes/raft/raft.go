@@ -187,7 +187,7 @@ type AppendEntriesReply struct {
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
-	if rf.currentTerm < args.term {
+	if rf.currentTerm < args.term && rf.commitIndex <= args.lastLogIndex {
 		rf.currentTerm = args.term
 		reply.voteGranted = true
 		reply.term = args.term
@@ -330,18 +330,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 					rf.sendRequestVote(i, arg, reply)
 					if reply.voteGranted {
-						rf.currentTerm++
+						count++
 					}
 				}
 
-				if rf.currentTerm <= l/2 {
+				if count <= l/2 {
 					// 选举票数未超半数，重新计时
-					rf.timer = time.time.NewTimer(time.Millisecond*rand.Intn(150) + 150)
 					break
 				}
 
 				//成为新节点，开始append msg
-				rf.leaderId = me
+				rf.leaderId = int32(rf.me)
 			}
 		}
 	}()
