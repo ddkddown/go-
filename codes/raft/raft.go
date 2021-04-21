@@ -191,6 +191,29 @@ type AppendEntriesReply struct {
 	success bool
 }
 
+func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	if args.leaderCommit == rf.lastApplied {
+		// 进入commit状态, 将操作持久化
+		reply.success = true
+		rf.currentTerm = args.term
+		return
+	}
+
+	if args.term <= rf.currentTerm {
+		reply.success = false
+		reply.term = rf.currentTerm
+		return
+	}
+
+	//执行replicate
+	for i := 0; i < len(args.entries); i++ {
+		args.entries[i].Command
+	}
+
+	reply.success = true
+	reply.term = rf.currentTerm
+}
+
 //
 // example RequestVote RPC handler.
 //
