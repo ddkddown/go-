@@ -40,6 +40,13 @@ Follower 在收到AppendEntries后会返回消息。
 若有两个节点同时成为Candidate, 并且都只能获得半数投票，那么倒计时重启再次进行选举
 */
 
+/*
+log replication
+Leader对Follower有heartbeat机制，用AppendEntries消息来完成
+client发送消息给leader后， leader会在下一个心跳包将消息发送给follower，
+follower收到后会给leader返回，收到超过一般follower返回，leader进入commit状态，并返回消息给client
+leader再次发送消息给follower，让follower进入commit状态
+*/
 import (
 	"math/rand"
 	"sync"
@@ -96,6 +103,7 @@ type Raft struct {
 	log         []LogInfo
 	nextIndex   []int32
 	matchIndex  []int32
+	peerCommit  []int32
 }
 
 // return currentTerm and whether this server
@@ -165,6 +173,7 @@ type RequestVoteArgs struct {
 type RequestVoteReply struct {
 	// Your data here (2A).
 	term        int32
+	commitIndex int32
 	voteGranted bool
 }
 
@@ -304,6 +313,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.log = make([]LogInfo, 10)
 	rf.matchIndex = make([]int32, 10)
 	rf.nextIndex = make([]int32, 10)
+	rf.peerCommit = make([]int32, len(peers))
 
 	rand.Seed(time.Now().UnixNano())
 	go func() {
@@ -331,6 +341,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 					rf.sendRequestVote(i, arg, reply)
 					if reply.voteGranted {
 						count++
+						//设置peer的commitindex
+						rf.peerCommit[i] = reply.commitIndex
 					}
 				}
 
@@ -341,6 +353,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 				//成为新节点，开始append msg
 				rf.leaderId = int32(rf.me)
+				//首先把自己和follower进行同步
+				//TODO
 			}
 		}
 	}()
