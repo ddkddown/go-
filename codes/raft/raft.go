@@ -98,8 +98,7 @@ type Raft struct {
 	currentTerm int32
 	voteFor     int32
 	leaderId    int32
-	commitIndex int32
-	lastApplied int32
+	lastApplied int32 //执行但未提交的动作
 	log         []LogInfo
 	nextIndex   []int32
 	matchIndex  []int32
@@ -113,6 +112,8 @@ func (rf *Raft) GetState() (int, bool) {
 	var term int
 	var isleader bool
 	// Your code here (2A).
+	term = int(rf.currentTerm)
+	isleader = (rf.leaderId == int32(rf.me))
 	return term, isleader
 }
 
@@ -180,38 +181,40 @@ type RequestVoteReply struct {
 type AppendEntriesArgs struct {
 	term         int32
 	leaderId     int32
-	prevLogIndex int32
-	prevLogTerm  int32
 	entries      []LogInfo
 	leaderCommit int32
 }
 
 type AppendEntriesReply struct {
-	term    int32
-	success bool
+	term         int32
+	clientCommit int32
+	success      bool
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	if args.leaderCommit == rf.lastApplied {
-		// 进入commit状态, 将操作持久化
-		reply.success = true
+	if args.term > rf.currentTerm {
+		// 确认, 从执行状态转到commit状态
+		for i := 0; i < len(args.entries); i++ {
+			//TODO args.entries[i].Command
+			//TODO 持久化
+		}
 		rf.currentTerm = args.term
-		return
-	}
-
-	if args.term <= rf.currentTerm {
-		reply.success = false
+		rf.lastApplied = rf.currentTerm
 		reply.term = rf.currentTerm
-		return
+		reply.success = true
+	} else if args.leaderCommit > rf.lastApplied {
+		// 进行执行状态
+		for i := 0; i < len(args.entries); i++ {
+			//TODO args.entries[i].Command
+		}
+		reply.success = true
+		// 进入commit状态, 将操作持久化
+	} else {
+		reply.success = false
 	}
 
-	//执行replicate
-	for i := 0; i < len(args.entries); i++ {
-		args.entries[i].Command
-	}
-
-	reply.success = true
-	reply.term = rf.currentTerm
+	rf.timer.Reset(time.Millisecond*rand.Intn(150) + 150)
+	return
 }
 
 //
@@ -219,7 +222,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
-	if rf.currentTerm < args.term && rf.commitIndex <= args.lastLogIndex {
+	if rf.currentTerm < args.term {
 		rf.currentTerm = args.term
 		reply.voteGranted = true
 		reply.term = args.term
@@ -285,7 +288,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	// Your code here (2B).
 	isLeader = (rf.leaderId == int32(rf.me))
 	term = int(rf.currentTerm)
-	index = int(rf.commitIndex)
 	return index, term, isLeader
 }
 
@@ -330,7 +332,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// Your initialization code here (2A, 2B, 2C).
 	rf.currentTerm = 0
-	rf.commitIndex = 0
 	rf.lastApplied = 0
 	rf.leaderId = -1
 	rf.log = make([]LogInfo, 10)
@@ -350,7 +351,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				arg.candidateId = int32(rf.me)
 				arg.lastLogTerm = rf.currentTerm
 				arg.term = rf.currentTerm + 1
-				arg.lastLogTerm = rf.commitIndex
 				reply := &RequestVoteReply{}
 				rf.currentTerm++
 
@@ -377,7 +377,22 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				//成为新节点，开始append msg
 				rf.leaderId = int32(rf.me)
 				//首先把自己和follower进行同步
-				//TODO
+				for i := 0; i < l; i++ {
+					var clienTerm int
+					var isLeader bool
+					rf.peers[i].Call("Raft.GetState", &clienTerm, &isLeader)
+					rf.peerCommit[i] = int32(clienTerm)
+
+					var appendArg AppendEntriesArgs
+					var appendReply AppendEntriesReply
+					appendArg.term = rf.currentTerm
+					appendArg.leaderCommit = rf.lastApplied
+					appendArg.entries = rf.log[rf.peerCommit[i]:]
+					rf.peers[i].Call("Raft.AppendEntries", &appendArg, &appendReply)
+					rf.peerCommit[i] = rf.currentTerm
+				}
+
+				//TODO 定时心跳
 			}
 		}
 	}()
