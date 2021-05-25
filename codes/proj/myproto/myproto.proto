@@ -1,5 +1,5 @@
 syntax = "proto3"; 
-package prototext;
+package myproto;
 option go_package = "./";
 message Test {
     string name = 1;
