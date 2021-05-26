@@ -18,4 +18,12 @@ func main() {
 	} else {
 		fmt.Println(in_data)
 	}
+
+	test2 := &myproto.Test{}
+	err2 := proto.Unmarshal(in_data, test2)
+	if err2 != nil {
+		fmt.Println("UnMarshaling error: ", err2)
+	} else {
+		fmt.Println(test2.Name)
+	}
 }
