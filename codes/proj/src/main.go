@@ -1,15 +1,15 @@
-package main 
+package main
 
 import (
-	"github.com/golang/protobuf/proto"
-	"fmt"
-	"os"
 	"ddk/myproto"
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func main() {
-	test := &myproto.Test {
-		name: proto.string("test")
+	test := &myproto.Test{
+		Name: string("test"),
 	}
 
 	in_data, err := proto.Marshal(test)
@@ -19,4 +19,3 @@ func main() {
 		fmt.Println(in_data)
 	}
 }
-
