@@ -4,3 +4,7 @@ option go_package = "./";
 message Test {
     string name = 1;
 }
+
+service HelloService {
+    rpc Hello (Test) returns (Test);
+}
