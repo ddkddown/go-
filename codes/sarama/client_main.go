@@ -2,28 +2,29 @@ package main
 
 import (
 	"fmt"
-	"github.com/Shopify/sarama"
 	"sync"
+
+	"github.com/Shopify/sarama"
 )
 
 var wg sync.WaitGroup
 
 func main() {
-	consumer, err1 := sarama.NewConsumer([]string{"127.0.0.1:9092"}, nil)
-	if err1 != nil {
-		fmt.Println("consumer conn err:", err1)
+	consumer, err := sarama.NewConsumer([]string{"192.168.0.102:9092"}, nil)
+	if err != nil {
+		fmt.Println("consumer conn err:", err)
 		return
 	}
 	defer consumer.Close()
 
-	partitions, err2 := consumer.Partitions("testGo")
-	if err2 != nil {
-		fmt.Println("get partitions err:", err2)
+	partitions, err := consumer.Partitions("web_log")
+	if err != nil {
+		fmt.Println("get partitions err:", err)
 		return
 	}
 
 	for _, p := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition("testGo", p, sarama.OffsetNewest)
+		partitionConsumer, err := consumer.ConsumePartition("web_log", p, sarama.OffsetNewest)
 		if err != nil {
 			fmt.Println("partitionConsumer err:", err)
 			continue

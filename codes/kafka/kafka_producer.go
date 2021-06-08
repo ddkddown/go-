@@ -11,7 +11,7 @@ func main() {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Partitioner = sarama.NewRandomPartitioner
 
-	producer, err1 := sarama.NewSyncProducer([]string{"192.168.11.245:9092"}, config)
+	producer, err1 := sarama.NewSyncProducer([]string{"127.0.0.1:9092"}, config)
 
 	if err1 != nil {
 		fmt.Println("create producer failed", err1)
@@ -21,7 +21,7 @@ func main() {
 	defer producer.Close()
 
 	msg := &sarama.ProducerMessage{
-		Topic:     "test",
+		Topic:     "testGo",
 		Partition: int32(-1),
 		Key:       sarama.StringEncoder("key"),
 	}
