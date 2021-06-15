@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"kafka"
+	"tailf"
 
 	"github.com/Shopify/sarama"
-	"github.com/hpcloud/tail"
 	"gopkg.in/ini.v1"
 )
 
@@ -35,23 +35,20 @@ func main() {
 	}
 
 	err = kafka.Init([]string{configobj.Address})
+	if err != nil {
+		fmt.Printf("init kafka failed: %v", err)
+		os.Exit(1)
+	}
 	//2. 根据配置中的日志路径用tail去收集
-	tailConfig := tail.Config{
-		ReOpen:    true,
-		Follow:    true,
-		Location:  &tail.SeekInfo{Offset: 0, Whence: 2},
-		MustExist: false,
-		Poll:      true,
+	err = tailf.Init(configobj.LogFilePath)
+	if err != nil {
+		fmt.Printf("init tail failed: %v", err)
+		os.Exit(1)
 	}
 
-	tails, err := tail.TailFile(configobj.LogFilePath, tailConfig)
-	if err != nil {
-		fmt.Println("tail file failed, err:", err)
-		return
-	}
 	//3. 把日志通过samara发往kafka
 	for {
-		line, ok := <-tails.Lines
+		line, ok := <-tailf.Tails.Lines
 		if !ok {
 			continue
 		}
