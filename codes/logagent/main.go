@@ -27,20 +27,29 @@ type Config struct {
 
 func main() {
 	//0. 读配置文件
-	configobj := new(Config)
-	err := ini.MapTo(configobj, "./conf/config.ini")
+
+	cfg, err := ini.Load("./conf/config.ini")
 	if err != nil {
-		fmt.Printf("Fail to read file: %v", err)
+		fmt.Printf("Fail to load cfg: %v", err)
 		os.Exit(1)
 	}
 
-	err = kafka.Init([]string{configobj.Address})
+	/*
+		configobj := new(Config)
+		err = cfg.MapTo(configobj)
+		if err != nil {
+			fmt.Printf("Fail to read file: %v", err)
+			os.Exit(1)
+		}
+	*/
+
+	err = kafka.Init([]string{cfg.Section("kafka").Key("address").String()})
 	if err != nil {
 		fmt.Printf("init kafka failed: %v", err)
 		os.Exit(1)
 	}
 	//2. 根据配置中的日志路径用tail去收集
-	err = tailf.Init(configobj.LogFilePath)
+	err = tailf.Init(cfg.Section("collect").Key("logfile_path").String())
 	if err != nil {
 		fmt.Printf("init tail failed: %v", err)
 		os.Exit(1)
@@ -54,7 +63,7 @@ func main() {
 		}
 		//create message
 		msg := &sarama.ProducerMessage{}
-		msg.Topic = configobj.Topic
+		msg.Topic = cfg.Section("kafka").Key("topic").String()
 		msg.Value = sarama.StringEncoder(line.Text)
 
 		pid, offset, err := kafka.Client.SendMessage(msg)

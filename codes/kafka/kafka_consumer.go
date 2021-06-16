@@ -9,21 +9,21 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	consumer, err1 := sarama.NewConsumer([]string{"127.0.0.1:9092"}, nil)
+	consumer, err1 := sarama.NewConsumer([]string{"192.168.0.102:9092"}, nil)
 	if err1 != nil {
 		fmt.Println("consumer conn err:", err1)
 		return
 	}
 	defer consumer.Close()
 
-	partitions, err2 := consumer.Partitions("testGo")
+	partitions, err2 := consumer.Partitions("web_log")
 	if err2 != nil {
 		fmt.Println("get partitions err:", err2)
 		return
 	}
 
 	for _, p := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition("testGo", p, sarama.OffsetNewest)
+		partitionConsumer, err := consumer.ConsumePartition("web_log", p, sarama.OffsetNewest)
 		if err != nil {
 			fmt.Println("partitionConsumer err:", err)
 			continue
