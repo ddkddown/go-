@@ -22,7 +22,7 @@ func Init(path string) (err error) {
 	Tails, err = tail.TailFile(path, tailConfig)
 	if err != nil {
 		fmt.Println("tail file failed, err:", err)
-		return
+		return err
 	}
 
 	return
