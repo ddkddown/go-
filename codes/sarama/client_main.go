@@ -24,7 +24,7 @@ func main() {
 	}
 
 	for _, p := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition("web_log", p, sarama.OffsetNewest)
+		partitionConsumer, err := consumer.ConsumePartition("web_log", p, sarama.OffsetOldest)
 		if err != nil {
 			fmt.Println("partitionConsumer err:", err)
 			continue
