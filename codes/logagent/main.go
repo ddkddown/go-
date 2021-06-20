@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"etcd"
 	"kafka"
-	"tailf"
-
 	"sync"
+	"tailf"
 
 	"github.com/Shopify/sarama"
 	"gopkg.in/ini.v1"
@@ -37,6 +37,10 @@ func run(cfg *ini.File, wg *sync.WaitGroup) (err error) {
 	for {
 		line, ok := <-tailf.Tails.Lines
 		if !ok {
+			continue
+		}
+
+		if len(line.Text) == 0 {
 			continue
 		}
 
@@ -77,8 +81,21 @@ func main() {
 		fmt.Printf("init kafka failed: %v", err)
 		os.Exit(1)
 	}
+
+	err = etcd.Init([]string{cfg.Section("etcd").Key("address").String()})
+	if err != nil {
+		fmt.Printf("init etcd failed: %v", err)
+		os.Exit(1)
+	}
+
+	msg, err := etcd.GetConf(cfg.Section("etcd").Key("collect_key").String())
+	if err != nil {
+		fmt.Printf("get log_cfg failed: %v", err)
+		os.Exit(1)
+	}
+
 	//2. 根据配置中的日志路径用tail去收集
-	err = tailf.Init(cfg.Section("collect").Key("logfile_path").String())
+	err = tailf.Init(msg[0].Path)
 	if err != nil {
 		fmt.Printf("init tail failed: %v", err)
 		os.Exit(1)
