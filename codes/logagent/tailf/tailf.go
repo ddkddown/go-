@@ -7,9 +7,12 @@ import (
 )
 
 var (
-	Tails *tail.Tail
+	Tails []*tail.Tail
 )
 
+func init() {
+	Tails = make([]*tail.Tail, 10)
+}
 func Init(path string) (err error) {
 	tailConfig := tail.Config{
 		ReOpen:    true,
@@ -19,11 +22,11 @@ func Init(path string) (err error) {
 		Poll:      true,
 	}
 
-	Tails, err = tail.TailFile(path, tailConfig)
+	t, err := tail.TailFile(path, tailConfig)
 	if err != nil {
 		fmt.Println("tail file failed, err:", err)
 		return err
 	}
-
+	Tails = append(Tails, t)
 	return
 }

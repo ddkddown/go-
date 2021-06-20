@@ -29,13 +29,14 @@ type Config struct {
 }
 
 var (
-	wg sync.WaitGroup
+	wg  sync.WaitGroup
+	msg []etcd.CollectEntry
 )
 
-func run(cfg *ini.File, wg *sync.WaitGroup) (err error) {
+func run(cfg *ini.File, wg *sync.WaitGroup, index int) (err error) {
 	// 循环读数据
 	for {
-		line, ok := <-tailf.Tails.Lines
+		line, ok := <-tailf.Tails[index].Lines
 		if !ok {
 			continue
 		}
@@ -45,11 +46,11 @@ func run(cfg *ini.File, wg *sync.WaitGroup) (err error) {
 		}
 
 		//create message
-		msg := &sarama.ProducerMessage{}
-		msg.Topic = cfg.Section("kafka").Key("topic").String()
-		msg.Value = sarama.StringEncoder(line.Text)
+		kafkaMsg := &sarama.ProducerMessage{}
+		kafkaMsg.Topic = msg[index].Topic
+		kafkaMsg.Value = sarama.StringEncoder(line.Text)
 
-		kafka.MsgChan <- msg
+		kafka.MsgChan <- kafkaMsg
 	}
 
 	wg.Done()
@@ -95,16 +96,21 @@ func main() {
 	}
 
 	//2. 根据配置中的日志路径用tail去收集
-	err = tailf.Init(msg[0].Path)
-	if err != nil {
-		fmt.Printf("init tail failed: %v", err)
-		os.Exit(1)
+	for _, m := range msg {
+		err = tailf.Init(m.Path)
+		if err != nil {
+			fmt.Printf("init tail failed: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	//3. 把日志通过samara发往kafka
-	wg.Add(2)
+	wg.Add(1)
 	go kafka.SendMsg(&wg)
-	go run(cfg, &wg)
+	for i := 0; i < len(msg); i++ {
+		go run(cfg, &wg, i)
+		wg.Add(1)
+	}
 
 	wg.Wait()
 }
