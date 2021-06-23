@@ -20,6 +20,11 @@ func main() {
 	var buf bytes.Buffer
 	for _, v := range s {
 		fmt.Fprintf(&buf, "%d", v)
+		fmt.Printf("%c", v)
+	}
+
+	for _, v := range s {
+		fmt.Printf("%c", v)
 	}
 
 	fmt.Println(s, c, t, buf.String())
