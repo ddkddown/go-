@@ -15,5 +15,8 @@ func main() {
 		defer test(v)()
 	}
 
+	//虽然抛出了异常，但是仍然会执行defer
+	panic("test")
+
 	fmt.Println("ready to go")
 }
