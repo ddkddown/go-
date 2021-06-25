@@ -20,6 +20,14 @@ func test2() {
 }
 
 func main() {
+	q := [3]int{0}
+	w := &q
+	q[0] = 2
+	fmt.Println(w)
+	fmt.Println(q)
+	fmt.Println(w.(type))
+
+	const i = "test"
 	test()
 
 	//捕获不了test2
