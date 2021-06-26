@@ -9,8 +9,13 @@ import (
 
 var wg sync.WaitGroup
 
+type test struct {
+	i int
+}
+
 func worker2(ctx context.Context) {
 	defer wg.Done()
+	fmt.Println("test2: ", ctx.Value(test{2}))
 LOOP:
 	for {
 		fmt.Println("worker2")
@@ -40,6 +45,7 @@ LOOP:
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, test{2}, test{1})
 	wg.Add(2)
 	go worker(ctx)
 	time.Sleep(time.Second * 3)
