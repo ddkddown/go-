@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// recover 只能捕获一级内的异常错误，超出则捕获不到。
+
 func test() {
 	defer func() {
 		switch p := recover(); {
@@ -32,6 +34,7 @@ func main() {
 
 	//捕获不了test2
 	test2()
+	// 此时test2内的异常已经被抛出，未捕获到
 	defer func() {
 		switch p := recover(); {
 		default:
