@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"time"
-
+	"fmt"
 	"redis/client"
+	"redis/comm"
 )
 
 var (
@@ -13,23 +13,27 @@ var (
 
 func main() {
 
+	err := client.Rdb.Set(ctx, "key", "value", 10).Err()
+	if err != nil {
+		panic(err)
+	}
+
+	val, err := client.Rdb.Get(ctx, "key").Result()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("wang:", val)
+
+	i, _ := comm.GetDistrID()
+	fmt.Printf("distriID: %d\n", i)
+	comm.IncrDistrID()
+	i, _ = comm.GetDistrID()
+	fmt.Printf("distriID: %d\n", i)
+
 	/*
-			err := client.Rdb.Set(ctx, "key", "value", 10).Err()
-			if err != nil {
-				panic(err)
-			}
-
-			time.Sleep(12 * time.Second)
-
-			val, err := client.Rdb.Get(ctx, "key").Result()
-			if err != nil {
-				panic(err)
-			}
-
-		fmt.Println("wang:", val)
+		now, _ := client.Lock(ctx, 10)
+		time.Sleep(120 * time.Second)
+		client.Unlock(ctx, now)
 	*/
-
-	now, _ := client.Lock(ctx, 10)
-	time.Sleep(120 * time.Second)
-	client.Unlock(ctx, now)
 }
