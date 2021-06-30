@@ -33,6 +33,8 @@ func Lock(ctx context.Context, expireTime int64) (now int64, ret bool) {
 }
 
 func Unlock(ctx context.Context, timeStamp int64) (ret int) {
+	//这里解锁有个bug，如果a获取了锁，在解锁时，先获取锁的值，发现和自己的值一样，和下一步删除锁的操作不是原子的。
+	//要是在这中间锁过期，然后有个b获得了锁，a之后的删锁就可能导致误删。
 	val, _ := Rdb.Get(ctx, "mutex").Result()
 	i, _ := strconv.ParseInt(val, 10, 64)
 	if timeStamp == i {
@@ -53,4 +55,18 @@ func Unlock(ctx context.Context, timeStamp int64) (ret int) {
 	fmt.Println("timeStamp not eq ", timeStamp, i)
 
 	return 1
+}
+
+func SafeUnlock(ctx context.Context, timeStamp int64) (ret int) {
+	//使用lua脚本实现，因为lua脚本在redis里执行是原子性的，所以就可以解决上诉问题。
+	//lua脚本代码
+	/*
+			if redis.call("get",KEYS[1]) == ARGV[1] then
+		    return redis.call("del",KEYS[1])
+			else
+		    	return 0
+			end
+	*/
+
+	return 0
 }

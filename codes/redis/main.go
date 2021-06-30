@@ -30,6 +30,6 @@ func main() {
 	*/
 
 	now, _ := client.Lock(ctx, 10)
-	time.Sleep(12 * time.Second)
+	time.Sleep(120 * time.Second)
 	client.Unlock(ctx, now)
 }
