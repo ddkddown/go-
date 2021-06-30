@@ -27,8 +27,7 @@ func main() {
 
 	i, _ := comm.GetDistrID()
 	fmt.Printf("distriID: %d\n", i)
-	comm.IncrDistrID()
-	i, _ = comm.GetDistrID()
+	i, _ = comm.IncrDistrID()
 	fmt.Printf("distriID: %d\n", i)
 
 	/*
